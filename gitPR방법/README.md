@@ -24,7 +24,24 @@
 7. 브렌치 업스트림 푸시
    
    ``` git push --set-upstream origin <브렌치명> ```
-8. 
+8. 깃허브에서 pull requests 요청
+   
+   
+   > NEW pull request를 눌러 PR요청 
+   ![NEW pull requests](assets/PR_1.png)
+   
+   > compare에 생성한 브렌치를 선택
+   > 
+   > base에 병합하고 싶은 브렌치를 선택
+   ![Select branch](assets/PR_2.png)
+   
+   > 풀 리퀘스트 생성
+   ![Create pull request](assets/PR_3.png)
+
+   > 승인하는 사람이 확인해야 할 중요한 부분을 작성
+   > 
+   > ```Create pull request```옆 화살표를 눌러 ```Create draft pull request```로 변경 후 등록
+   ![Create draft pull request](assets/PR_4.png)
 
 
 ## 승인해주는 사람
