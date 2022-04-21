@@ -46,5 +46,5 @@
 
 ## 승인해주는 사람
 ---
- git add .
-git commit -a -m "testing first commit"
+> 승인해주는 사람한테는 풀 리퀘스트가 발생할 시 이메일이 간다.
+
