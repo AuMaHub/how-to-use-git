@@ -99,7 +99,7 @@ argocd 네임스페이스 생성
 
 Argo CD 배포
 
-``` kubectl apply -n argocd -f <https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml> ```
+``` kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/ha/install.yaml ```
 
 Argo CD 포트포워드
 
