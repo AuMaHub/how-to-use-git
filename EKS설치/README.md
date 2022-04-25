@@ -5,7 +5,7 @@
 ## kubectl 설치
 ---
 
-> 이미 쿠버네티스가 깔려있다면 따라하지 하세요
+> 이미 쿠버네티스가 깔려있다면 이 과정을 스킵하세요
 
 > Kubernetes 1.22
 
@@ -95,9 +95,9 @@ brew install argoproj/tap/argocd
 
 argocd 네임스페이스 생성
 
-``` kubectl create namespace argocd ```
+``` kubectl create namespace argo ```
 
-Argo CD 배포
+<!-- Argo CD 배포
 
 ``` kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/ha/install.yaml ```
 
@@ -108,4 +108,54 @@ Argo CD 포트포워드
 Argo CD 패스워드 확인
 
 ``` kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d ```
+> ID는 admin으로 고정 -->
+
+
+helm으로 Argo CD 설치
+``` 
+kubectl label namespace argocd istio-injection=enabled 
+
+helm repo add argo https://argoproj.github.io/argo-helm
+
+helm repo update
+
+helm fetch argo/argo-cd
+
+tar -xvzf <argo-cd압축파일명>
+```
+
+압축 해제 후 argo-cd 폴더 내부 values.yaml 파일 편집
+![](assets/values.yaml_edit.png)
+
+```
+annotation:
+  service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+  service.beta.kubernetes.io/aws-load-balancer-subnets: subnet-032042c7xxxxxxx, subnet-0b85c1e5xxxxxxxxx, subnet-0f5cfdd6xxxxxxxxx, 
+
+type: ClusterIP -> LoadBalancer로 변경
+```
+> 서브넷에 있는 코드 2 ~ 3개 정도를 service.beta.kubernetes.io/aws-load-balancer-subnets에 작성
+![subnet](assets/subnet.png)
+
+values.yaml파일을 helm으로 ArogCD 설치 
+
+``` helm install argo -n argo argo/argo-cd -f values.yaml ```
+
+argo-agrocd-server의 EXTERNAL-IP의 주소로 들어가서 AgroCD UI확인 가능
+
+``` kubectl get po,svc -n argo ```
+> 안되면 10분만 기다렸다가 해보기
+
+Argo CD 패스워드 확인
+
+``` kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d ```
 > ID는 admin으로 고정
+
+## ingress-nginx 설치
+---
+네트워크 로드밸런서 활성화
+
+``` kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.1.3/deploy/static/provider/aws/deploy.yaml ```
+
+-- https://sweetysnail1011.tistory.com/83 를 참고 하며 작성중...
+
