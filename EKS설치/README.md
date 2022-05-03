@@ -1,7 +1,11 @@
 # AWS EKS 사용방법
 
-※[공식문서](https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html) 보고 따라함
+※ [공식문서](https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html) 보고 따라함
 
+※ 모든 명령어는 mac기준으로 작성했습니다.
+
+> AWS KEY가 인터넷에 노출되면 압축된 파일이더라도 
+> 바로 확인해서 계정의 할당량을 없애버리므로 주의(※ AWS가 아니더라도 KEY데이터는 절대 인터넷에 공개되지 않도록 주의)
 ## kubectl 설치
 ---
 
@@ -81,41 +85,55 @@ fargate를 사용해서 CloudeFormation을 생성
 ``` eksctl create cluster --name <생성할 클러스터 명> --region <리전코드> --fargate [--profile <프로필명>]```
 > CloudFormation은 무료이며 region-code는 [여기를 참고](https://docs.aws.amazon.com/ko_kr/AWSEC2/latest/UserGuide/using-regions-availability-zones.html)
 
-## argoCD 설치
+## [argoCD 설치](https://argo-cd.readthedocs.io/en/release-1.8/getting_started/)
 ---
 > Docker Desktop에서 AWS EKS에 접속되어있는지 확인하고 시작할 것
 
 Argo CD CLI 설치
 
 ``` 
-brew tap argoproj/tap 
-brew install argoproj/tap/argocd
+brew install argocd
 ```
 > 로컬에서 Argo CD 명령어를 사용할 수 있어야 하므로 CLI를 깔아준다.
 
-argocd 네임스페이스 생성
+argocd 네임스페이스 생성 및 등록
 
-``` kubectl create namespace argo ```
+``` 
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+```
 
-<!-- Argo CD 배포
-
-``` kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/ha/install.yaml ```
-
-Argo CD 포트포워드
+Argo CD 포트포워딩
 
 ``` kubectl port-forward svc/argocd-server -n argocd 8080:443 ```
+> 포트포워딩 후 다른 터미널을 추가로 열어준다.
 
 Argo CD 패스워드 확인
 
 ``` kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d ```
-> ID는 admin으로 고정 -->
 
+Argo CD CLI 로그인
 
-helm으로 Argo CD 설치
+``` argocd login http://localhost:8080 ```
+> Username은 admin
+>
+> Password는 위에 패스워드 확인한 내용
+>
+> ※ 패스워드 마지막에 ```%```가 있으면 빼고 입력
+
+등록된 클러스터 확인
+
+``` kubectl config get-contexts -o name ```
+
+Argo CD에 클러스터 추가
+
+``` argocd cluster add <사용할 클러스터명> ```
+
+### helm으로 Argo CD 설치
 ``` 
-kubectl label namespace argocd istio-injection=enabled 
-
 helm repo add argo https://argoproj.github.io/argo-helm
+
+helm repo list
 
 helm repo update
 
@@ -151,11 +169,60 @@ Argo CD 패스워드 확인
 ``` kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d ```
 > ID는 admin으로 고정
 
+
+
+--------------------------
+
+``` aws sts get-caller-identity ``` 의 ARN이 클러스터 생성자와 일치하는지 확인
+
+``` aws eks update-kubeconfig --name <클러스터명> --region <리전> ``` 
+
+``` ARGOCD_SERVER=`kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server -o name | cut -d'/' -f 2` ```
+``` ARGOCD_SERVER_HOST=`kubectl get svc argocd-server -o json -n argocd | jq -r '.status.loadBalancer.ingress[0].hostname'` ```
+> 여기서 jq가 없으면 ``` brew install jq ```
+
+
+
+--------------------------
+
+## argocd 저장소 등록
+---
+ssh key 생성
+   
+```ssh-keygen -t ed25519 -C "<이메일>" ```
+``` 
+---
+Enter file in which to save the key (/Users/account/.ssh/id_ed25519): /Users/account/.ssh/<저장할 ssh-key명>
+
+Enter passphrase (empty for no passphrase): 엔터
+
+Enter same passphrase again: 엔터
+```
+> ArgoCD에서 ssh키를 사용할 땐 RSA형식이면 안됨
+>
+> 비밀번호를 입력하면 복잡해지므로(경험X) 엔터를 눌러 비밀번호를 스킵
+
+공개키 복사
+
+``` pbcopy < ~/.ssh/<ssh-key명>.pub ```
+
+github에 ssh key 등록
+![ssh 등록](assets/git_ssh1.png)
+![ssh 등록](assets/git_ssh2.png)
+
+argocd cli로 git repo 등록
+
+``` argocd repo add git@github.com:<Git아이디>/<레포지토리>.git --ssh-private-key-path ~/.ssh/<ssh-key명> --upsert ```
+
 ## ingress-nginx 설치
 ---
 네트워크 로드밸런서 활성화
 
 ``` kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.1.3/deploy/static/provider/aws/deploy.yaml ```
 
--- https://sweetysnail1011.tistory.com/83 를 참고 하며 작성중...
+-- [참고사이트](https://twodeveloper.tistory.com/76)
 
+
+## AWS ECR 
+---
+> AWS ECR 생성 후 리포지토리에 들어가서 푸시명령 보기에 적힌대로 buildspec.yaml에 작성
