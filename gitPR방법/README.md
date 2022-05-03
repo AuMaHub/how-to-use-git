@@ -2,6 +2,8 @@
 
 ## 요청하는 사람
 ---
+### 1. 명령어 ver
+---
 1. 협업하는 깃 클론 (현재 터미널 위치에 생성됨)
    
    ``` git clone <REPO_URL> ```
@@ -43,7 +45,9 @@
    > ```Create pull request```옆 화살표를 눌러 ```Create draft pull request```로 변경 후 등록
    ![Create draft pull request](assets/PR_4.png)
 
-
+### 2. vscode ver
+---
+> 추후 작성
 
 ## 승인해주는 사람
 ---
@@ -56,4 +60,6 @@
    ![Merge pull request](assets/PR_admin_2.png)
 
    > Delete branch를 눌러 브렌치가 쌓이지 않도록 관리
+   >
+   > ※ 개인으로 브렌치를 관리한다면 이 작업은 해당되지 않음
    ![Delete branch](assets/PR_admin_3.png)
