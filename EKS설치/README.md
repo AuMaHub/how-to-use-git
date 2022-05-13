@@ -2,14 +2,18 @@
 
 ※ [공식문서](https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html) 보고 따라함
 
-※ 모든 명령어는 mac기준으로 작성했습니다.
+※ [EKS 설정 정리](https://github.com/marcincuber/eks) alb-nginx-ingress.yaml 등 설정 예시파일들이 있음
+
+※ 모든 명령어는 mac기준으로 작성함
+
+[argocd](https://www.bogotobogo.com/DevOps/Docker/Docker_Kubernetes_ArgoCD_with_Helm_on_Kubernetes_App_of_Apps.php)
 
 > AWS KEY가 인터넷에 노출되면 압축된 파일이더라도 
 > 바로 확인해서 계정의 할당량을 없애버리므로 주의(※ AWS가 아니더라도 KEY데이터는 절대 인터넷에 공개되지 않도록 주의)
 ## kubectl 설치
 ---
 
-> 이미 쿠버네티스가 깔려있다면 이 과정을 스킵하세요
+> 이미 쿠버네티스가 깔려있다면 이 과정을 스킵
 
 > Kubernetes 1.22
 
@@ -222,7 +226,123 @@ argocd cli로 git repo 등록
 
 -- [참고사이트](https://twodeveloper.tistory.com/76)
 
+argocd에 적용
+
+[](assets/ingress_in_argocd.png)
 
 ## AWS ECR 
 ---
 > AWS ECR 생성 후 리포지토리에 들어가서 푸시명령 보기에 적힌대로 buildspec.yaml에 작성
+
+
+## eks 대시보드
+---
+
+대시보드 설치
+
+``` kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.5/aio/deploy/recommended.yaml ```
+
+대시보드 바인딩 파일 생성
+
+```
+# 파일명 eks-admin-service-account.yaml
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: eks-admin
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: eks-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: eks-admin
+  namespace: kube-system
+
+```
+
+대시보드 바인딩 파일 적용
+
+``` kubectl apply -f eks-admin-service-account.yaml ```
+
+대시보드 접속 토큰확인
+
+``` kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | grep eks-admin | awk '{print $1}') ```
+
+대시보드 프록시 시작
+
+``` kubectl proxy ```
+
+대시보드 접속 주소
+
+``` http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/#!/login ```
+
+
+## Load Balancer Controller
+---
+> ※ 내용이 자세히 기억이 안나므로 검색해서 하는 것을 추천
+>
+> [공식문서](https://docs.aws.amazon.com/ko_kr/eks/latest/userguide/aws-load-balancer-controller.html)
+
+<!-- ```
+eksctl utils associate-iam-oidc-provider \
+    --region us-west-2 \
+    --cluster oames-api \
+    --approve
+``` -->
+
+AWS API를 호출할 수 있는 AWS 로드 밸런서 컨트롤러의 IAM 정책 다운로드
+```
+curl -o iam-policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/main/docs/install/iam_policy.json
+```
+
+다운로드한 정책을 사용하여 IAM 정책 생성
+```
+aws iam create-policy \
+    --policy-name AWSLoadBalancerControllerIAMPolicy \
+    --policy-document file://iam-policy.json
+```
+
+IAM 역할을 생성하고 AWS 로드 밸런서 컨트롤러의 kube-system 네임스페이스에 aws-load-balancer-controller라는 Kubernetes 서비스 계정을 추가
+```
+eksctl create iamserviceaccount \
+--cluster=<클러스터명> \
+--namespace=kube-system \
+--name=aws-load-balancer-controller \
+--attach-policy-arn=arn:aws:iam::<aws-account>:policy/AWSLoadBalancerControllerIAMPolicy \
+--approve
+```
+
+```
+kubectl apply -k "github.com/aws/eks-charts/stable/aws-load-balancer-controller//crds?ref=master"
+```
+
+```
+helm upgrade -i aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=<클러스터명> --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller
+```
+
+
+## ※ 주의사항
+
+- 서버의 포트와 ingress로 지정한 포트는 동일해야함.
+> 포트가 다를 시 증상 : aws 로드밸런스에서 인스턴스가 실행되지 않는다며 EXTERNAL-IP로 접근 시 ERR_EMPTY_RESPONSE 에러가 남
+
+- String boot서버를 도커로 열 때에는 build.gradle에 
+``` 
+jar {
+	enabled = false
+}
+```
+를 추가한다
+
+
+## 태그
+---
+#alb-nginx-ingress #eks #route53 #codebuild #ecr #cert-manager #argocd #helm #loadBalancer
