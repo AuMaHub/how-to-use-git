@@ -285,7 +285,64 @@ subjects:
 ``` http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/#!/login ```
 
 
+## Load Balancer Controller
+---
+> ※ 내용이 자세히 기억이 안나므로 검색해서 하는 것을 추천
+>
+> [공식문서](https://docs.aws.amazon.com/ko_kr/eks/latest/userguide/aws-load-balancer-controller.html)
+
+<!-- ```
+eksctl utils associate-iam-oidc-provider \
+    --region us-west-2 \
+    --cluster oames-api \
+    --approve
+``` -->
+
+AWS API를 호출할 수 있는 AWS 로드 밸런서 컨트롤러의 IAM 정책 다운로드
+```
+curl -o iam-policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/main/docs/install/iam_policy.json
+```
+
+다운로드한 정책을 사용하여 IAM 정책 생성
+```
+aws iam create-policy \
+    --policy-name AWSLoadBalancerControllerIAMPolicy \
+    --policy-document file://iam-policy.json
+```
+
+IAM 역할을 생성하고 AWS 로드 밸런서 컨트롤러의 kube-system 네임스페이스에 aws-load-balancer-controller라는 Kubernetes 서비스 계정을 추가
+```
+eksctl create iamserviceaccount \
+--cluster=<클러스터명> \
+--namespace=kube-system \
+--name=aws-load-balancer-controller \
+--attach-policy-arn=arn:aws:iam::<aws-account>:policy/AWSLoadBalancerControllerIAMPolicy \
+--approve
+```
+
+```
+kubectl apply -k "github.com/aws/eks-charts/stable/aws-load-balancer-controller//crds?ref=master"
+```
+
+```
+helm upgrade -i aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=<클러스터명> --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller
+```
+
+
+## ※ 주의사항
+
+- 서버의 포트와 ingress로 지정한 포트는 동일해야함.
+> 포트가 다를 시 증상 : aws 로드밸런스에서 인스턴스가 실행되지 않는다며 EXTERNAL-IP로 접근 시 ERR_EMPTY_RESPONSE 에러가 남
+
+- String boot서버를 도커로 열 때에는 build.gradle에 
+``` 
+jar {
+	enabled = false
+}
+```
+를 추가한다
+
 
 ## 태그
 ---
-#alb-nginx-ingress #eks #route53 #codebuild #ecr #cert-manager #argocd #helm #
+#alb-nginx-ingress #eks #route53 #codebuild #ecr #cert-manager #argocd #helm #loadBalancer
